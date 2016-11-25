@@ -7,6 +7,8 @@
     var methodOverride = require('method-override'); // simulate DELETE and PUT (express4)
     var database = require('./config/database');
 
+
+
     // configuration =================
 
     mongoose.connect(database.url);     // connect to mongoDB database on modulus.io
@@ -18,6 +20,9 @@
     app.use(bodyParser.json());                                     // parse application/json
     app.use(bodyParser.json({ type: 'application/vnd.api+json' })); // parse application/vnd.api+json as json
     app.use(methodOverride());
+
+    app.set('view engine', 'ejs');
+    
     require('./app/routes')(app);
     // define model =================
     /*var Todo = mongoose.model('Todo', {
