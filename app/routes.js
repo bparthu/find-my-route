@@ -4,6 +4,7 @@ var express = require('express');
     var cheerio = require('cheerio');
     var rp = require('request-promise');
     var q = require('bluebird');
+    var TrainModel = require('./models/train');
 // expose the routes to our app with module.exports
 module.exports = function(app){
 	// routes ======================================================================
@@ -22,7 +23,7 @@ module.exports = function(app){
 
     var apiRoutes = express.Router();
     apiRoutes.get('/trains/list',function(req,res){
-        var pages = 5;
+        var pages = 1;
         url = 'https://www.cleartrip.com/trains/list?page=1';
 
         function getOptions(url){
@@ -65,6 +66,18 @@ module.exports = function(app){
         var promises = buildPromises(pages);
         q.all(promises).then(function(results){
             console.log('all promises done');
+            trainList.forEach(function(eachTrain){
+                TrainModel.create({
+                    id      : eachTrain.id,
+                    name    : eachTrain.name,
+                    starts  : eachTrain.starts,
+                    ends    : eachTrain.ends
+                },function(err){
+                    if(err){
+                        res.send(err);
+                    }
+                });
+            });
             res.render('list',{
                 tmpl: 'Total List : ' + trainList.length + '<br/>' + JSON.stringify(trainList)
             });
