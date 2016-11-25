@@ -5,11 +5,11 @@
     var morgan = require('morgan');             // log requests to the console (express4)
     var bodyParser = require('body-parser');    // pull information from HTML POST (express4)
     var methodOverride = require('method-override'); // simulate DELETE and PUT (express4)
-    //var database = require('./config/database');
+    var database = require('./config/database');
 
     // configuration =================
 
-    //mongoose.connect(database.url);     // connect to mongoDB database on modulus.io
+    mongoose.connect(database.url);     // connect to mongoDB database on modulus.io
 
     app.use(express.static(__dirname + '/public'));                 // set the static files location /public/img will be /img for users
     // load the routes
