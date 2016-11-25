@@ -23,7 +23,7 @@ module.exports = function(app){
 
     var apiRoutes = express.Router();
     apiRoutes.get('/trains/list',function(req,res){
-        var pages = 1;
+        var pages = 5;
         url = 'https://www.cleartrip.com/trains/list?page=1';
 
         function getOptions(url){
