@@ -15,15 +15,17 @@ module.exports = function(app){
     function Train(data){
         this.id = data[0];
         this.name = data[1];
-        this.starts = data[2];
-        this.ends = data[3];
+        this.startStnCode = data[2];
+        this.starts = data[3];
+        this.endStnCode = data[4];
+        this.ends = data[5];
     }
 
     var trainList = [];
 
     var apiRoutes = express.Router();
-    apiRoutes.get('/trains/list',function(req,res){
-        var pages = 5;
+    apiRoutes.get('/trains/populate',function(req,res){
+        var pages = 1;
         url = 'https://www.cleartrip.com/trains/list?page=1';
 
         function getOptions(url){
@@ -41,6 +43,10 @@ module.exports = function(app){
             $('.results > tbody > tr').each(function(){
                 var trainInfoArr = [];
                 $(this).find('td').each(function(){
+                    var href = $(this).find('a').attr('href');
+                    if(href && href.indexOf('stations') !== -1){
+                        trainInfoArr.push(href.split('/')[3]);
+                    }
                     trainInfoArr.push($(this).text());
                 });
                 var train = new Train(trainInfoArr);
@@ -68,10 +74,12 @@ module.exports = function(app){
             console.log('all promises done');
             trainList.forEach(function(eachTrain){
                 TrainModel.create({
-                    id      : eachTrain.id,
-                    name    : eachTrain.name,
-                    starts  : eachTrain.starts,
-                    ends    : eachTrain.ends
+                    id           : eachTrain.id,
+                    name         : eachTrain.name,
+                    startStnCode : eachTrain.startStnCode,
+                    starts       : eachTrain.starts,
+                    endStnCode   : eachTrain.endStnCode,
+                    ends         : eachTrain.ends
                 },function(err){
                     if(err){
                         res.send(err);
