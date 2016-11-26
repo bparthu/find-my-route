@@ -1,19 +1,21 @@
 {
-  "name"         : "node-todo",
-  "version"      : "0.0.0",
-  "description"  : "Simple todo application.",
-  "main"         : "server.js",
-  "author"       : "partha",
-  "dependencies" : {
-    "body-parser"    : "^1.4.3",
-    "express"        : "^4.13.4",
+  "name": "node-todo",
+  "version": "0.0.0",
+  "description": "Simple todo application.",
+  "main": "server.js",
+  "author": "partha",
+  "dependencies": {
+    "bluebird": "latest",
+    "body-parser": "^1.4.3",
+    "cheerio": "latest",
+    "ejs": "^1.0.0",
+    "express": "^4.13.4",
+    "jsonfile": "^2.4.0",
+    "lodash": "^4.17.2",
     "method-override": "^2.1.3",
-    "mongoose"       : "latest",
-    "morgan"         : "^1.1.1",
-    "request"        : "latest",
-    "ejs"            : "^1.0.0",
-    "cheerio"        : "latest",
-    "request-promise": "latest",
-    "bluebird"       : "latest"
+    "mongoose": "^4.7.0",
+    "morgan": "^1.1.1",
+    "request": "latest",
+    "request-promise": "latest"
   }
 }

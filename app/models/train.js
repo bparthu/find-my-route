@@ -11,4 +11,7 @@ var TrainSchema = new Schema({
 	ends: String
 });
 
-module.exports = mongoose.model('Train',TrainSchema);
+module.exports = function(db){
+	return db.model('Train',TrainSchema);
+} 
+

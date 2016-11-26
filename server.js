@@ -12,7 +12,14 @@
     // configuration =================
     console.log(process.version);
     
-    var conn = mongoose.connect(database.url);    
+    var conn = mongoose.createConnection(database.url);  
+
+    /*conn.on('open', function () {
+	    conn.db.listCollections().toArray(function (err, names) {
+	        console.log(err, names);
+	        conn.close();
+	    });
+	});*/
 
 
     // connect to mongoDB database on modulus.io
@@ -27,7 +34,7 @@
 
     app.set('view engine', 'ejs');
 
-    require('./app/routes')(app);
+    require('./app/routes')(app,conn);
     // define model =================
     /*var Todo = mongoose.model('Todo', {
         text : String
