@@ -33,18 +33,38 @@ module.exports = function(app,db){
 
     var apiRoutes = express.Router();
 
-     apiRoutes.get('/find-route/getConnectedJunctionsToStn',function(req,res){
+     apiRoutes.get('/stations/setStationWeights',function(req,res){
      
       var startStnCode = req.query.start;
+      var stationWeights=[];
       var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
-      var currentTrainRoute="";
-      var tempTrainRoute="";
-
-      function getConnectedJunctions(trains){ 
-         //asdfasdfasdf
-      }           
-        getConnectedJunctions(trains);
-        res.json(stations);
+      var stations = jsonfile.readFileSync('./resource/stations.json');
+      var fileName = "./resource/stationWeight.json";
+     
+        function setStationWeight(trains,StnCode){ 
+             var trainsAtStn =[];
+             _.forEach(trains,function(train){
+                    for(var i=0;i<train.route.length;i++){
+                        if(train.route[i].code == StnCode){                              
+                            trainsAtStn.push(train.id); 
+                            break;
+                        }                        
+                    }                    
+             });
+             var stationWeg = {
+                 stationCode:StnCode,
+                 stationWeight:trainsAtStn.length
+             }
+             stationWeights.push(stationWeg);
+        }      
+        _.forEach(stations,function(station){
+              setStationWeight(trains,station.stationCode);
+        });   
+      
+        jsonfile.writeFileSync(fileName,stationWeights);
+        res.render('list',{
+            tmpl: 'Total List : ' + stationWeights.length + '<br/>' + JSON.stringify(stationWeights)
+        });
 
      });
 
@@ -103,6 +123,79 @@ module.exports = function(app,db){
             }        
         getDirectTrains(trains);
         res.json(directTrains);
+     });
+
+     apiRoutes.get('/find-route/getconnectedtrains',function(req,res){
+
+        var startStnCode = req.query.start;
+        var endStnCode = req.query.end;
+        var dateOfTravel = req.query.date; 
+        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
+        var stations = jsonfile.readFileSync('./resource/stationWeight.json');
+        var connectedTrains =[];
+        var directTrains=[];
+        var promises=[];
+        var stationCode =[];
+        var staionsInfo=[];
+        var connectingStations=[];
+
+        function getOptions(url){
+                console.log('making call with url -> '+url);
+                    return {
+                            uri: url,
+                            json:true
+                    };
+                 }
+
+        function buildPromises(startStnCode,endStnCode,dateOfTravel){
+            var promises= [];
+            var urlPattern = 'http://localhost:8080/api/find-route/getdirecttrains?start='+startStnCode+'&end='+endStnCode+'&date='+dateOfTravel;
+            var promise = rp(getOptions(urlPattern));
+            promise.then(function(res){
+               directTrains = res;
+               _.forEach(res,function(train){
+                    var flag1=false;
+                    var flag2=false;
+                   for(var i=0;i<train.route.length;i++){
+                       if(train.route[i].code == startStnCode && !flag1){
+                           flag1=true;                        
+                       }
+                       if(flag1){
+                                if(_.indexOf(stationCode,train.route[i].code)==-1){   
+                                    if(endStnCode == train.route[i].code){
+                                        flag2=true;
+                                    }
+                                     if(!flag2){                    
+                                        stationCode.push(train.route[i].code);
+                                        staionsInfo.push({code:train.route[i].code,name:train.route[i].fullname});
+                                     }                                    
+                                }                          
+                       }                           
+                   }                  
+               });  
+
+               _.forEach(staionsInfo,function(station){
+                  if(_.endsWith(station.name,'JN')||_.endsWith(station.name,'JN.')){
+                      connectingStations.push({code:station.code,name:station.name});
+                  }
+                  else{
+                     var obj = _.filter(stations, {'stationCode': station.code});
+                     if(obj.stationWeight>100){
+                       connectingStations.push({code:station.code,name:station.name});
+                     }
+                  }
+               }); 
+            });
+            promises.push(promise);
+            return promises;            
+        }
+        var promises = buildPromises(startStnCode,endStnCode,dateOfTravel);
+         q.all(promises).then(function(results){
+            console.log('all promises done'); 
+             res.json(connectingStations);
+        });
+      
+      
      });
 
 
