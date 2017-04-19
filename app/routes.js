@@ -15,7 +15,7 @@ module.exports = function(app,db){
     // get all todos
     var TrainModel = require('./models/train')(db);
     var StationModel = require('./models/station')(db);
-    var TrainInfoModel = require('./models/traininfo')(db);
+   // var TrainInfoModel = require('./models/traininfo')(db);
 
     function createCallbackFn(processor, instance, finalList){
         var Instance = instance;
@@ -40,7 +40,8 @@ module.exports = function(app,db){
       var currentTrainRoute="";
       var tempTrainRoute="";
 
-      function getConnectedJunctions(trains){  
+      function getConnectedJunctions(trains){ 
+           
       }           
         getConnectedJunctions(trains);
         res.json(stations);
