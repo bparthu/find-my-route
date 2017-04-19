@@ -41,7 +41,7 @@ module.exports = function(app,db){
       var tempTrainRoute="";
 
       function getConnectedJunctions(trains){ 
-           
+         //asdfasdfasdf
       }           
         getConnectedJunctions(trains);
         res.json(stations);
