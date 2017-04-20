@@ -117,7 +117,7 @@ module.exports = function(app,db){
             return weekday[date.getDay()];
     }
 
-    function dateDiff(start, end) {
+    function dateDiff(start, end, flag) {
         start = start.split(":");
         end = end.split(":");
         var startDate = new Date(0, 0, 0, start[0], start[1], 0);
@@ -126,7 +126,10 @@ module.exports = function(app,db){
         var hours = Math.floor(diff / 1000 / 60 / 60);
         diff -= hours * 1000 * 60 * 60;
         var minutes = Math.floor(diff / 1000 / 60);
-        
+        if(flag){
+            if (hours < 0)
+            hours = hours + 24;
+        }
         return ((hours > 0 && hours <= 9 )? "0" : "") + hours + ":" + ( (minutes>0 && minutes <= 9) ? "0" : "") + minutes;
     }
     
@@ -214,21 +217,33 @@ module.exports = function(app,db){
                         _.forEach(trainsFromSrcToIntermediateTemp,function(train){
 
                             var trainsFromIntermediateToEndtemp=[];
-
+                            var findTriainOfNextday=false;
                             var secArivalToIntermediateStn = train.route.filter(function(r){
                                 return r.code == station.code;
                             })[0].scharr;
 
+                           
+
                             var dayofArival = train.route.filter(function(r){
-                            return r.code == station.code;
+                                return r.code == station.code;
                             })[0].day;
 
+                            if(parseInt(secArivalToIntermediateStn.split(":")[0])>=23){
+                                findTriainOfNextday = true; 
+                            }
+                             
                             var date = "";
                             date = dateOfTravel;
                             if(dayofArival > 1){
                                 var parts = date.split("-");
                                 parts[0]=parseInt(parts[0])+parseInt(dayofArival-1);
                                 date = parts[0]+"-"+parts[1]+"-"+parts[2];
+                               // console.log();
+                            }else if(dayofArival == 1 && findTriainOfNextday){
+                               var parts = date.split("-");
+                                parts[0]=parseInt(parts[0])+1;
+                                date = parts[0]+"-"+parts[1]+"-"+parts[2]; 
+                              
                             }
 
                             trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,date).filter(function(o) { 
@@ -244,7 +259,7 @@ module.exports = function(app,db){
                                      return r.code == station.code;
                                 })[0].schdep;
 
-                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation);                                                          
+                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,findTriainOfNextday);                                                          
                               //  console.log(train.id+"--"+ trn.id +"--"+trn.name+"---"+secArivalToIntermediateStn +"---"+ schDepatureFromIntermediateStation+"---"+waitingTime);
                                 var time = parseInt(waitingTime .split(":")[0]);
 
@@ -259,7 +274,7 @@ module.exports = function(app,db){
                             
                              var trainsFromIntToEnd = [];
                               trainsFromIntToEnd = trainsFromIntermediateToEnd.filter(function(trn){   
-                                  return trn.watingHrs > 0 && trn.watingHrs <3;
+                                  return trn.watingHrs > 0 && trn.watingHrs <10;
                               });
 
                              if(trainsFromIntToEnd.length>0){ 
