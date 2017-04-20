@@ -68,92 +68,65 @@ module.exports = function(app,db){
 
      });
 
-     apiRoutes.get('/find-route/getdirecttrains',function(req,res){
+    function getDirectTrains(trains,startStnCode,endStnCode,dateOfTravel){
 
-        var startStnCode = req.query.start;
-        var endStnCode = req.query.end;
-        var dateOfTravel = req.query.date; 
-        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
         var directTrains =[];
-        
-        function toDate(dateStr,daysToAdd) {
-            var parts = dateStr.split("-");
-            return new Date(parts[2], parts[1] - 1, parts[0]-(daysToAdd-1));
-        }
-        
-        function getDay(date){
-           //console.log(date.getDay());
-                var weekday = new Array(7);
-                weekday[0] =  "SUN";
-                weekday[1] = "MON";
-                weekday[2] = "TUE";
-                weekday[3] = "WED";
-                weekday[4] = "THU";
-                weekday[5] = "FRI";
-                weekday[6] = "SAT";
+            _.forEach(trains,function(train){
+                var trainFound= false;
+                var daysToAdd = 1;
                 
-                return weekday[date.getDay()];
-        }
-      
-        function getDirectTrains(trains){  
-                _.forEach(trains,function(train){
-                    var trainFound= false;
-                    var daysToAdd = 1;
-                   
-                    for(var i=0;i<train.route.length;i++){
-                        if(train.route[i].code == startStnCode && !trainFound){    
-                            daysToAdd = train.route[i].day;
-                            trainFound=true;  
-                        }
-                        if(trainFound){
-                            if(endStnCode == train.route[i].code){
-                                    _.forEach(train.days,function(day){
-                                        var dayfound= false;
-                                        if(day['day-code']==getDay(toDate(dateOfTravel,daysToAdd)) && !dayfound){
-                                            if(day.runs =='Y'){
-                                                dayfound = true;
-                                                directTrains.push(train);
-                                            };
-                                        }
-                                    });
-                            }
+                for(var i=0;i<train.route.length;i++){
+                    if(train.route[i].code == startStnCode && !trainFound){    
+                        daysToAdd = train.route[i].day;
+                        trainFound=true;  
+                    }
+                    if(trainFound){
+                        if(endStnCode == train.route[i].code){
+                                _.forEach(train.days,function(day){
+                                    var dayfound= false;
+                                    if(day['day-code']==getDay(toDate(dateOfTravel,daysToAdd)) && !dayfound){
+                                        if(day.runs =='Y'){
+                                            dayfound = true;
+                                            directTrains.push(train);
+                                        };
+                                    }
+                                });
                         }
                     }
-                });     
-            }        
-        getDirectTrains(trains);
-        res.json(directTrains);
-     });
+                }
+            }); 
+            return directTrains;    
+    } 
+        
+    function toDate(dateStr,daysToAdd) {
+        var parts = dateStr.split("-");
+        return new Date(parts[2], parts[1] - 1, parts[0]-(daysToAdd-1));
+    }
+    
+    function getDay(date){
+        //console.log(date.getDay());
+            var weekday = new Array(7);
+            weekday[0] =  "SUN";
+            weekday[1] = "MON";
+            weekday[2] = "TUE";
+            weekday[3] = "WED";
+            weekday[4] = "THU";
+            weekday[5] = "FRI";
+            weekday[6] = "SAT";
+            
+            return weekday[date.getDay()];
+    }
+    
+    function getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains){
+          
+            var directTrains=[];
+            var stationCode =[];
+            var staionsInfo=[];
+            var connectingStations=[];
+            var directTrainNumbers=[];
 
-     apiRoutes.get('/find-route/getconnectedtrains',function(req,res){
-
-        var startStnCode = req.query.start;
-        var endStnCode = req.query.end;
-        var dateOfTravel = req.query.date; 
-        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
-        var stations = jsonfile.readFileSync('./resource/stationWeight.json');
-        var connectedTrains =[];
-        var directTrains=[];
-        var promises=[];
-        var stationCode =[];
-        var staionsInfo=[];
-        var connectingStations=[];
-
-        function getOptions(url){
-                console.log('making call with url -> '+url);
-                    return {
-                            uri: url,
-                            json:true
-                    };
-                 }
-
-        function buildPromises(startStnCode,endStnCode,dateOfTravel){
-            var promises= [];
-            var urlPattern = 'http://localhost:8080/api/find-route/getdirecttrains?start='+startStnCode+'&end='+endStnCode+'&date='+dateOfTravel;
-            var promise = rp(getOptions(urlPattern));
-            promise.then(function(res){
-               directTrains = res;
-               _.forEach(res,function(train){
+               directTrains = getDirectTrains(trains,startStnCode,endStnCode,dateOfTravel);
+               _.forEach(directTrains,function(train){
                     var flag1=false;
                     var flag2=false;
                    for(var i=0;i<train.route.length;i++){
@@ -180,24 +153,89 @@ module.exports = function(app,db){
                   }
                   else{
                      var obj = _.filter(stations, {'stationCode': station.code});
-                     if(obj.stationWeight>100){
-                       connectingStations.push({code:station.code,name:station.name});
+                     if(typeof(obj[0]) != "undefined"){
+                        if(obj[0].stationWeight>100){
+                        connectingStations.push({code:station.code,name:station.name});
+                        }
                      }
                   }
                }); 
-            });
-            promises.push(promise);
-            return promises;            
-        }
-        var promises = buildPromises(startStnCode,endStnCode,dateOfTravel);
-         q.all(promises).then(function(results){
-            console.log('all promises done'); 
-             res.json(connectingStations);
-        });
-      
-      
-     });
 
+                _.forEach(directTrains,function(train){
+                    directTrainNumbers.push(train.id);
+                });
+
+               return { 
+                        directTrains:directTrains,
+                        connectingStations:_.slice(connectingStations,1,connectingStations.length),
+                        directTrainNumbers:directTrainNumbers
+                      }
+    }
+                 
+    apiRoutes.get('/find-route/getTrains',function(req,res){
+        var startStnCode = req.query.start;
+        var endStnCode = req.query.end;
+        var dateOfTravel = req.query.date; 
+        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
+        var stations = jsonfile.readFileSync('./resource/stationWeight.json');
+        var connectedTrains =[];
+        var connectingStations =[];
+        var directTrainNumbers=[];
+        var directTrains=[];
+
+        function getConnetedTrains(startStnCode,endStnCode,dateOfTravel){
+
+                var response = getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains);
+                connectingStations = response.connectingStations;
+                directTrainNumbers = response.directTrainNumbers;
+                directTrains = response.directTrains;
+                _.forEach(connectingStations,function(station){
+                    var trainsFromSrcToIntermediateTemp =[];
+                    var trainsFromIntermediateToEndtemp=[];
+                    
+
+                        trainsFromSrcToIntermediateTemp = getDirectTrains(trains,startStnCode,station.code,dateOfTravel).filter(function(o) { 
+                            return  directTrainNumbers.indexOf(o.id) === -1;
+                        });
+                        
+                        trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,dateOfTravel).filter(function(o) { 
+                            return  directTrainNumbers.indexOf(o.id) === -1;
+                        });
+
+                        var firstLeg = {startStn:startStnCode,endStn:station.code,trains:trainsFromSrcToIntermediateTemp};
+                        var secondLeg = {startStn:station.code,endStn:endStnCode,trains:trainsFromIntermediateToEndtemp};
+                        
+                        connectedTrains.push({
+                            sourceStn:startStnCode,
+                            endStn:endStnCode,
+                            firstleg:firstLeg,
+                            secondleg:secondLeg
+                        });
+                    });
+        }
+
+        getConnetedTrains(startStnCode,endStnCode,dateOfTravel);
+        res.json({directTrains:directTrains,connectedTrains:connectedTrains});
+    });
+
+     apiRoutes.get('/find-route/getDirectTrainsAndJunctionsBetweenStations',function(req,res){
+
+        var startStnCode = req.query.start;
+        var endStnCode = req.query.end;
+        var dateOfTravel = req.query.date; 
+        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
+        var stations = jsonfile.readFileSync('./resource/stationWeight.json');
+        
+             
+       
+         var response  = getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains);
+            console.log('all promises done'); 
+             
+             res.json({directTrains:response.directTrains,
+                 connectingStations: response.connectingStations,
+                 directTrainNumbers:response.directTrainNumbers
+            });
+     });
 
      apiRoutes.get('/trains/gettraininfo',function(req,res){
           var fileName = './resource/trainsInfo_5000_5565.json'
