@@ -116,6 +116,19 @@ module.exports = function(app,db){
             
             return weekday[date.getDay()];
     }
+
+    function dateDiff(start, end) {
+        start = start.split(":");
+        end = end.split(":");
+        var startDate = new Date(0, 0, 0, start[0], start[1], 0);
+        var endDate = new Date(0, 0, 0, end[0], end[1], 0);
+        var diff = endDate.getTime() - startDate.getTime();
+        var hours = Math.floor(diff / 1000 / 60 / 60);
+        diff -= hours * 1000 * 60 * 60;
+        var minutes = Math.floor(diff / 1000 / 60);
+        
+        return ((hours > 0 && hours <= 9 )? "0" : "") + hours + ":" + ( (minutes>0 && minutes <= 9) ? "0" : "") + minutes;
+    }
     
     function getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains){
           
@@ -191,25 +204,85 @@ module.exports = function(app,db){
                 directTrains = response.directTrains;
                 _.forEach(connectingStations,function(station){
                     var trainsFromSrcToIntermediateTemp =[];
-                    var trainsFromIntermediateToEndtemp=[];
+                  
                     
 
                         trainsFromSrcToIntermediateTemp = getDirectTrains(trains,startStnCode,station.code,dateOfTravel).filter(function(o) { 
                             return  directTrainNumbers.indexOf(o.id) === -1;
                         });
                         
-                        trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,dateOfTravel).filter(function(o) { 
-                            return  directTrainNumbers.indexOf(o.id) === -1;
-                        });
+                        _.forEach(trainsFromSrcToIntermediateTemp,function(train){
 
-                        var firstLeg = {startStn:startStnCode,endStn:station.code,trains:trainsFromSrcToIntermediateTemp};
-                        var secondLeg = {startStn:station.code,endStn:endStnCode,trains:trainsFromIntermediateToEndtemp};
-                        
-                        connectedTrains.push({
-                            sourceStn:startStnCode,
-                            endStn:endStnCode,
-                            firstleg:firstLeg,
-                            secondleg:secondLeg
+                            var trainsFromIntermediateToEndtemp=[];
+
+                            var secArivalToIntermediateStn = train.route.filter(function(r){
+                                return r.code == station.code;
+                            })[0].scharr;
+
+                            var dayofArival = train.route.filter(function(r){
+                            return r.code == station.code;
+                            })[0].day;
+
+                            var date = "";
+                            date = dateOfTravel;
+                            if(dayofArival > 1){
+                                var parts = date.split("-");
+                                parts[0]=parseInt(parts[0])+parseInt(dayofArival-1);
+                                date = parts[0]+"-"+parts[1]+"-"+parts[2];
+                            }
+
+                            trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,date).filter(function(o) { 
+                                return  directTrainNumbers.indexOf(o.id) === -1;
+                            });
+
+
+                            var trainsFromIntermediateToEnd =[];
+
+                            _.forEach(trainsFromIntermediateToEndtemp,function(trn){
+
+                                var schDepatureFromIntermediateStation = trn.route.filter(function(r){
+                                     return r.code == station.code;
+                                })[0].schdep;
+
+                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation);                                                          
+                              //  console.log(train.id+"--"+ trn.id +"--"+trn.name+"---"+secArivalToIntermediateStn +"---"+ schDepatureFromIntermediateStation+"---"+waitingTime);
+                                var time = parseInt(waitingTime .split(":")[0]);
+
+                                trainsFromIntermediateToEnd.push({
+                                    train:trn,
+                                    schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
+                                    waitingTime:waitingTime,
+                                    watingHrs:time
+                                });
+
+                            });
+                            
+                             var trainsFromIntToEnd = [];
+                              trainsFromIntToEnd = trainsFromIntermediateToEnd.filter(function(trn){   
+                                  return trn.watingHrs > 0 && trn.watingHrs <3;
+                              });
+
+                             if(trainsFromIntToEnd.length>0){ 
+                                var firstLeg = {startStn:startStnCode,
+                                    endStn:station.code,
+                                    dateOfArivalToIntermediateStn:date,
+                                    secArivalToIntermediateStn:secArivalToIntermediateStn,
+                                    train:train
+                                    };
+
+                                var secondLeg = {
+                                    startStn:station.code,
+                                    endStn:endStnCode,
+                                    dateOfDepatureFromIntermediateStn:date, 
+                                    trains:trainsFromIntToEnd
+                                    };
+                                    connectedTrains.push({
+                                        sourceStn:startStnCode,
+                                        endStn:endStnCode,
+                                        firstleg:firstLeg,
+                                        secondleg:secondLeg
+                                    });
+                             }
                         });
                     });
         }
