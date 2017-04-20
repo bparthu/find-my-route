@@ -261,20 +261,23 @@ module.exports = function(app,db){
 
                                 var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,findTriainOfNextday);                                                          
                               //  console.log(train.id+"--"+ trn.id +"--"+trn.name+"---"+secArivalToIntermediateStn +"---"+ schDepatureFromIntermediateStation+"---"+waitingTime);
-                                var time = parseInt(waitingTime .split(":")[0]);
+                                var hrs = parseInt(waitingTime .split(":")[0]);
+                                var mins = parseInt(waitingTime .split(":")[1]);
+                                var time = (hrs*60)+mins;
+
 
                                 trainsFromIntermediateToEnd.push({
                                     train:trn,
                                     schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
                                     waitingTime:waitingTime,
-                                    watingHrs:time
+                                    watingMins:time
                                 });
 
                             });
                             
                              var trainsFromIntToEnd = [];
                               trainsFromIntToEnd = trainsFromIntermediateToEnd.filter(function(trn){   
-                                  return trn.watingHrs > 0 && trn.watingHrs <10;
+                                  return trn.watingMins > 30 && trn.watingMins <300;
                               });
 
                              if(trainsFromIntToEnd.length>0){ 
