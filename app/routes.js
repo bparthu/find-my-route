@@ -213,6 +213,9 @@ module.exports = function(app,db){
                             var secArivalToIntermediateStn = train.route.filter(function(r){
                                 return r.code == station.code;
                             })[0].scharr;
+                            var schDepFromSrcStn = train.route.filter(function(r){
+                                return r.code == startStnCode;
+                            })[0].schdep;
 
                             var dayofArival = train.route.filter(function(r){
                                 return r.code == station.code;
@@ -258,6 +261,7 @@ module.exports = function(app,db){
 
                                 trainsFromIntermediateToEnd.push({
                                     train:trn,
+                                    dateOfDepatureFromIntermediateStn:date, 
                                     schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
                                     waitingTime:waitingTime,
                                     watingMins:time
@@ -273,15 +277,16 @@ module.exports = function(app,db){
                              if(trainsFromIntToEnd.length>0){ 
                                 var firstLeg = {startStn:startStnCode,
                                     endStn:station.code,
+                                    dateOfDepatureFromSrcStn:dateOfTravel,
+                                    schDepFromSrcStn:schDepFromSrcStn,
                                     dateOfArivalToIntermediateStn:date,
-                                    secArivalToIntermediateStn:secArivalToIntermediateStn,
+                                    schArivalToIntermediateStn:secArivalToIntermediateStn,
                                     train:train
                                     };
 
                                 var secondLeg = {
                                     startStn:station.code,
                                     endStn:endStnCode,
-                                    dateOfDepatureFromIntermediateStn:date, 
                                     trains:trainsFromIntToEnd
                                     };
                                     connectedTrains.push({
