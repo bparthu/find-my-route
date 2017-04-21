@@ -226,11 +226,13 @@ module.exports = function(app,db){
                             }
                              
                             var date = "";
+                            var dateOfArivalToIntermediateStn=dateOfTravel;;
                             date = dateOfTravel;
                             if(dayofArival > 1){
                                 var parts = date.split("-");
                                 parts[0]=parseInt(parts[0])+parseInt(dayofArival-1);
                                 date = parts[0]+"-"+parts[1]+"-"+parts[2];
+                                dateOfArivalToIntermediateStn=date;
                                // console.log();
                             }else if(dayofArival == 1 && findTriainOfNextday){
                                var parts = date.split("-");
@@ -279,7 +281,7 @@ module.exports = function(app,db){
                                     endStn:station.code,
                                     dateOfDepatureFromSrcStn:dateOfTravel,
                                     schDepFromSrcStn:schDepFromSrcStn,
-                                    dateOfArivalToIntermediateStn:date,
+                                    dateOfArivalToIntermediateStn:dateOfArivalToIntermediateStn,
                                     schArivalToIntermediateStn:secArivalToIntermediateStn,
                                     train:train
                                     };
