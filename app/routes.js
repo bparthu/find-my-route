@@ -188,19 +188,12 @@ module.exports = function(app,db){
                         directTrainNumbers:directTrainNumbers
                       }
     }
-                 
-    apiRoutes.get('/find-route/getTrains',function(req,res){
-        var startStnCode = req.query.start;
-        var endStnCode = req.query.end;
-        var dateOfTravel = req.query.date; 
-        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
-        var stations = jsonfile.readFileSync('./resource/stationWeight.json');
-        var connectedTrains =[];
-        var connectingStations =[];
-        var directTrainNumbers=[];
-        var directTrains=[];
 
-        function getConnetedTrains(startStnCode,endStnCode,dateOfTravel){
+    function getConnetedTrains(startStnCode,endStnCode,dateOfTravel,stations,trains){
+                var connectedTrains =[];
+                var connectingStations =[];
+                var directTrainNumbers=[];
+                var directTrains=[];
 
                 var response = getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains);
                 connectingStations = response.connectingStations;
@@ -209,8 +202,6 @@ module.exports = function(app,db){
                 _.forEach(connectingStations,function(station){
                     var trainsFromSrcToIntermediateTemp =[];
                   
-                    
-
                         trainsFromSrcToIntermediateTemp = getDirectTrains(trains,startStnCode,station.code,dateOfTravel).filter(function(o) { 
                             return  directTrainNumbers.indexOf(o.id) === -1;
                         });
@@ -222,8 +213,6 @@ module.exports = function(app,db){
                             var secArivalToIntermediateStn = train.route.filter(function(r){
                                 return r.code == station.code;
                             })[0].scharr;
-
-                           
 
                             var dayofArival = train.route.filter(function(r){
                                 return r.code == station.code;
@@ -304,10 +293,17 @@ module.exports = function(app,db){
                              }
                         });
                     });
-        }
-
-        getConnetedTrains(startStnCode,endStnCode,dateOfTravel);
-        res.json({directTrains:directTrains,connectedTrains:connectedTrains});
+        return {directTrains:directTrains,connectedTrains:connectedTrains};
+    }
+                 
+    apiRoutes.get('/find-route/getTrains',function(req,res){
+        var startStnCode = req.query.start;
+        var endStnCode = req.query.end;
+        var dateOfTravel = req.query.date; 
+        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
+        var stations = jsonfile.readFileSync('./resource/stationWeight.json');
+        var response = getConnetedTrains(startStnCode,endStnCode,dateOfTravel,stations,trains);
+        res.json({directTrains:response.directTrains,connectedTrains:response.connectedTrains});
     });
 
      apiRoutes.get('/find-route/getDirectTrains',function(req,res){
