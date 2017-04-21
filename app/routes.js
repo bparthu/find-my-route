@@ -95,6 +95,7 @@ module.exports = function(app,db){
                     }
                 }
             }); 
+           // console.log(directTrains);
             return directTrains;    
     } 
         
@@ -308,6 +309,14 @@ module.exports = function(app,db){
         getConnetedTrains(startStnCode,endStnCode,dateOfTravel);
         res.json({directTrains:directTrains,connectedTrains:connectedTrains});
     });
+
+     apiRoutes.get('/find-route/getDirectTrains',function(req,res){
+        var startStnCode = req.query.start;
+        var endStnCode = req.query.end;
+        var dateOfTravel = req.query.date; 
+        var trains = jsonfile.readFileSync('./resource/trainsInfo.json');
+        res.json({directTrains: getDirectTrains(trains,startStnCode,endStnCode,dateOfTravel)});
+     });
 
      apiRoutes.get('/find-route/getDirectTrainsAndJunctionsBetweenStations',function(req,res){
 
