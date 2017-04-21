@@ -118,19 +118,18 @@ module.exports = function(app,db){
             return weekday[date.getDay()];
     }
 
-    function dateDiff(start, end, flag) {
+    function dateDiff(start, end,startDate,endDate) {
         start = start.split(":");
         end = end.split(":");
-        var startDate = new Date(0, 0, 0, start[0], start[1], 0);
-        var endDate = new Date(0, 0, 0, end[0], end[1], 0);
-        var diff = endDate.getTime() - startDate.getTime();
+        startDate = startDate.split("-");
+        endDate=endDate.split("-");
+        var startDateTemp = new Date(startDate[2], startDate[1], startDate[0], start[0], start[1], 0);
+        var endDatetemp = new Date(endDate[2], endDate[1], endDate[0], end[0], end[1], 0);
+        var diff = endDatetemp.getTime() - startDateTemp.getTime();
         var hours = Math.floor(diff / 1000 / 60 / 60);
         diff -= hours * 1000 * 60 * 60;
         var minutes = Math.floor(diff / 1000 / 60);
-        if(flag){
-            if (hours < 0)
-            hours = hours + 24;
-        }
+        
         return ((hours > 0 && hours <= 9 )? "0" : "") + hours + ":" + ( (minutes>0 && minutes <= 9) ? "0" : "") + minutes;
     }
     
@@ -209,6 +208,7 @@ module.exports = function(app,db){
                         _.forEach(trainsFromSrcToIntermediateTemp,function(train){
 
                             var trainsFromIntermediateToEndtemp=[];
+                            var trainsFromIntermediateToEndtemp2=[];
                             var findTriainOfNextday=false;
                             var secArivalToIntermediateStn = train.route.filter(function(r){
                                 return r.code == station.code;
@@ -221,11 +221,12 @@ module.exports = function(app,db){
                                 return r.code == station.code;
                             })[0].day;
 
-                            if(parseInt(secArivalToIntermediateStn.split(":")[0])>=23){
+                            if(parseInt(secArivalToIntermediateStn.split(":")[0])>=19){
                                 findTriainOfNextday = true; 
                             }
                              
                             var date = "";
+                            var date2 ="";
                             var dateOfArivalToIntermediateStn=dateOfTravel;;
                             date = dateOfTravel;
                             if(dayofArival > 1){
@@ -237,13 +238,18 @@ module.exports = function(app,db){
                             }else if(dayofArival == 1 && findTriainOfNextday){
                                var parts = date.split("-");
                                 parts[0]=parseInt(parts[0])+1;
-                                date = parts[0]+"-"+parts[1]+"-"+parts[2]; 
-                              
+                                date2 = parts[0]+"-"+parts[1]+"-"+parts[2]; 
                             }
 
                             trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,date).filter(function(o) { 
                                 return  directTrainNumbers.indexOf(o.id) === -1;
                             });
+
+                            if(date2!=""){
+                                trainsFromIntermediateToEndtemp2 = getDirectTrains(trains,station.code,endStnCode,date2).filter(function(o) { 
+                                    return  directTrainNumbers.indexOf(o.id) === -1;
+                                });
+                            }
 
 
                             var trainsFromIntermediateToEnd =[];
@@ -254,7 +260,7 @@ module.exports = function(app,db){
                                      return r.code == station.code;
                                 })[0].schdep;
 
-                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,findTriainOfNextday);                                                          
+                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,dateOfTravel,date);                                                          
                               //  console.log(train.id+"--"+ trn.id +"--"+trn.name+"---"+secArivalToIntermediateStn +"---"+ schDepatureFromIntermediateStation+"---"+waitingTime);
                                 var hrs = parseInt(waitingTime .split(":")[0]);
                                 var mins = parseInt(waitingTime .split(":")[1]);
@@ -270,6 +276,31 @@ module.exports = function(app,db){
                                 });
 
                             });
+
+
+                             _.forEach(trainsFromIntermediateToEndtemp2,function(trn){
+
+                                var schDepatureFromIntermediateStation = trn.route.filter(function(r){
+                                     return r.code == station.code;
+                                })[0].schdep;
+
+                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,dateOfTravel,date2);                                                          
+                              //  console.log(train.id+"--"+ trn.id +"--"+trn.name+"---"+secArivalToIntermediateStn +"---"+ schDepatureFromIntermediateStation+"---"+waitingTime);
+                                var hrs = parseInt(waitingTime .split(":")[0]);
+                                var mins = parseInt(waitingTime .split(":")[1]);
+                                var time = (hrs*60)+mins;
+
+
+                                trainsFromIntermediateToEnd.push({
+                                    train:trn,
+                                    dateOfDepatureFromIntermediateStn:date2, 
+                                    schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
+                                    waitingTime:waitingTime,
+                                    watingMins:time
+                                });
+
+                            });
+
                             
                              var trainsFromIntToEnd = [];
                               trainsFromIntToEnd = trainsFromIntermediateToEnd.filter(function(trn){   
