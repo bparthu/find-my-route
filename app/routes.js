@@ -71,6 +71,7 @@ module.exports = function(app,db){
     function getDirectTrains(trains,startStnCode,endStnCode,dateOfTravel){
 
         var directTrains =[];
+        var directTrainNumbers=[];
             _.forEach(trains,function(train){
                 var trainFound= false;
                 var daysToAdd = 1;
@@ -80,23 +81,13 @@ module.exports = function(app,db){
                         daysToAdd = train.route[i].day;
                         trainFound=true;  
                     }
-                    if(trainFound){
-                        if(endStnCode == train.route[i].code){
-                                _.forEach(train.days,function(day){
-                                    var dayfound= false;
-                                    if(day['day-code']==getDay(toDate(dateOfTravel,daysToAdd)) && !dayfound){
-                                        if(day.runs =='Y'){
-                                            dayfound = true;
-                                            directTrains.push(train);
-                                        };
-                                    }
-                                });
-                        }
+                    if(trainFound && endStnCode == train.route[i].code && _.filter(train.days,function(r){return r['day-code'] == getDay(toDate(dateOfTravel,daysToAdd));})[0].runs == 'Y'){
+                         directTrains.push(train);
+                         directTrainNumbers.push(train.id);
                     }
                 }
             }); 
-           // console.log(directTrains);
-            return directTrains;    
+            return {trains:directTrains,trainNumbers:directTrainNumbers};    
     } 
         
     function toDate(dateStr,daysToAdd) {
@@ -142,7 +133,7 @@ module.exports = function(app,db){
             var directTrainNumbers=[];
 
                directTrains = getDirectTrains(trains,startStnCode,endStnCode,dateOfTravel);
-               _.forEach(directTrains,function(train){
+               _.forEach(directTrains.trains,function(train){
                     var flag1=false;
                     var flag2=false;
                    for(var i=0;i<train.route.length;i++){
@@ -163,28 +154,15 @@ module.exports = function(app,db){
                    }                  
                });  
 
-               _.forEach(staionsInfo,function(station){
-                  if(_.endsWith(station.name,'JN')||_.endsWith(station.name,'JN.')){
-                      connectingStations.push({code:station.code,name:station.name});
-                  }
-                  else{
-                     var obj = _.filter(stations, {'stationCode': station.code});
-                     if(typeof(obj[0]) != "undefined"){
-                        if(obj[0].stationWeight>100){
-                        connectingStations.push({code:station.code,name:station.name});
-                        }
-                     }
-                  }
-               }); 
-
-                _.forEach(directTrains,function(train){
-                    directTrainNumbers.push(train.id);
-                });
+              connectingStations =   _.filter(staionsInfo,function(r){
+                   var obj = _.filter(stations, {'stationCode': r.code});
+                   return _.endsWith(r.name,'JN')||_.endsWith(r.name,'JN.') || (typeof(obj[0]) != "undefined" && obj[0].stationWeight>100)
+               });
 
                return { 
-                        directTrains:directTrains,
+                        directTrains:directTrains.trains,
                         connectingStations:_.slice(connectingStations,1,connectingStations.length),
-                        directTrainNumbers:directTrainNumbers
+                        directTrainNumbers:directTrains.trainNumbers
                       }
     }
 
@@ -201,7 +179,7 @@ module.exports = function(app,db){
                 _.forEach(connectingStations,function(station){
                     var trainsFromSrcToIntermediateTemp =[];
                   
-                        trainsFromSrcToIntermediateTemp = getDirectTrains(trains,startStnCode,station.code,dateOfTravel).filter(function(o) { 
+                        trainsFromSrcToIntermediateTemp = getDirectTrains(trains,startStnCode,station.code,dateOfTravel).trains.filter(function(o) { 
                             return  directTrainNumbers.indexOf(o.id) === -1;
                         });
                         
@@ -210,18 +188,22 @@ module.exports = function(app,db){
                             var trainsFromIntermediateToEndtemp=[];
                             var trainsFromIntermediateToEndtemp2=[];
                             var findTriainOfNextday=false;
-                            var secArivalToIntermediateStn = train.route.filter(function(r){
+
+                            var trn1= train.route.filter(function(r){
                                 return r.code == station.code;
-                            })[0].scharr;
-                            var schDepFromSrcStn = train.route.filter(function(r){
+                            })[0];
+
+                            var trn2 =  train.route.filter(function(r){
                                 return r.code == startStnCode;
-                            })[0].schdep;
+                            })[0];
 
-                            var dayofArival = train.route.filter(function(r){
-                                return r.code == station.code;
-                            })[0].day;
+                            var secArivalToIntermediateStn = trn1.scharr;
+                            var schDepFromSrcStn = trn2.schdep;
+                            var dayofArival = trn1.day;
+                            var dayofArivalToSrcStn = trn2.day;
 
-                            if(parseInt(secArivalToIntermediateStn.split(":")[0])>=19){
+                           
+                            if(parseInt(secArivalToIntermediateStn.split(":")[0])>=18){
                                 findTriainOfNextday = true; 
                             }
                              
@@ -231,22 +213,21 @@ module.exports = function(app,db){
                             date = dateOfTravel;
                             if(dayofArival > 1){
                                 var parts = date.split("-");
-                                parts[0]=parseInt(parts[0])+parseInt(dayofArival-1);
+                                parts[0]=parseInt(parts[0])+parseInt(dayofArival-dayofArivalToSrcStn);
                                 date = parts[0]+"-"+parts[1]+"-"+parts[2];
                                 dateOfArivalToIntermediateStn=date;
-                               // console.log();
                             }else if(dayofArival == 1 && findTriainOfNextday){
                                var parts = date.split("-");
                                 parts[0]=parseInt(parts[0])+1;
                                 date2 = parts[0]+"-"+parts[1]+"-"+parts[2]; 
                             }
 
-                            trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,date).filter(function(o) { 
+                            trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,date).trains.filter(function(o) { 
                                 return  directTrainNumbers.indexOf(o.id) === -1;
                             });
 
                             if(date2!=""){
-                                trainsFromIntermediateToEndtemp2 = getDirectTrains(trains,station.code,endStnCode,date2).filter(function(o) { 
+                                trainsFromIntermediateToEndtemp2 = getDirectTrains(trains,station.code,endStnCode,date2).trains.filter(function(o) { 
                                     return  directTrainNumbers.indexOf(o.id) === -1;
                                 });
                             }
@@ -260,20 +241,20 @@ module.exports = function(app,db){
                                      return r.code == station.code;
                                 })[0].schdep;
 
-                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,dateOfTravel,date);                                                          
-                              //  console.log(train.id+"--"+ trn.id +"--"+trn.name+"---"+secArivalToIntermediateStn +"---"+ schDepatureFromIntermediateStation+"---"+waitingTime);
+                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,dateOfArivalToIntermediateStn,date);                                                          
                                 var hrs = parseInt(waitingTime .split(":")[0]);
                                 var mins = parseInt(waitingTime .split(":")[1]);
                                 var time = (hrs*60)+mins;
 
-
-                                trainsFromIntermediateToEnd.push({
-                                    train:trn,
-                                    dateOfDepatureFromIntermediateStn:date, 
-                                    schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
-                                    waitingTime:waitingTime,
-                                    watingMins:time
-                                });
+                                  if(time>0){
+                                    trainsFromIntermediateToEnd.push({
+                                        train:trn,
+                                        dateOfDepatureFromIntermediateStn:date, 
+                                        schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
+                                        waitingTime:waitingTime,
+                                        watingMins:time
+                                    });
+                                  }
 
                             });
 
@@ -284,30 +265,27 @@ module.exports = function(app,db){
                                      return r.code == station.code;
                                 })[0].schdep;
 
-                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,dateOfTravel,date2);                                                          
-                              //  console.log(train.id+"--"+ trn.id +"--"+trn.name+"---"+secArivalToIntermediateStn +"---"+ schDepatureFromIntermediateStation+"---"+waitingTime);
+                                var waitingTime =  dateDiff(secArivalToIntermediateStn, schDepatureFromIntermediateStation,dateOfArivalToIntermediateStn,date2);                                                          
                                 var hrs = parseInt(waitingTime .split(":")[0]);
                                 var mins = parseInt(waitingTime .split(":")[1]);
                                 var time = (hrs*60)+mins;
 
-
-                                trainsFromIntermediateToEnd.push({
-                                    train:trn,
-                                    dateOfDepatureFromIntermediateStn:date2, 
-                                    schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
-                                    waitingTime:waitingTime,
-                                    watingMins:time
-                                });
+                                if(time>0){
+                                    trainsFromIntermediateToEnd.push({
+                                        train:trn,
+                                        dateOfDepatureFromIntermediateStn:date2, 
+                                        schDepatureFromIntermediateStation:schDepatureFromIntermediateStation,
+                                        waitingTime:waitingTime,
+                                        watingMins:time
+                                    });
+                                }
 
                             });
 
                             
-                             var trainsFromIntToEnd = [];
-                              trainsFromIntToEnd = trainsFromIntermediateToEnd.filter(function(trn){   
-                                  return trn.watingMins > 30 && trn.watingMins <300;
-                              });
+                          
 
-                             if(trainsFromIntToEnd.length>0){ 
+                             if(trainsFromIntermediateToEnd.length>0){ 
                                 var firstLeg = {startStn:startStnCode,
                                     endStn:station.code,
                                     dateOfDepatureFromSrcStn:dateOfTravel,
@@ -320,7 +298,7 @@ module.exports = function(app,db){
                                 var secondLeg = {
                                     startStn:station.code,
                                     endStn:endStnCode,
-                                    trains:trainsFromIntToEnd
+                                    trains:trainsFromIntermediateToEnd
                                     };
                                     connectedTrains.push({
                                         sourceStn:startStnCode,
