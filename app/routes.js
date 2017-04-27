@@ -90,6 +90,25 @@ module.exports = function(app,db){
             return {trains:directTrains,trainNumbers:directTrainNumbers};    
     } 
         
+    function getDirectTrainsOnAnyDate(trains,startStnCode,endStnCode){
+
+        var directTrains =[];
+        var directTrainNumbers=[];
+            _.forEach(trains,function(train){
+                var trainFound= false;
+                for(var i=0;i<train.route.length;i++){
+                    if(train.route[i].code == startStnCode && !trainFound){    
+                        trainFound=true;  
+                    }
+                    if(trainFound && endStnCode == train.route[i].code){
+                         directTrains.push(train);
+                         directTrainNumbers.push(train.id);
+                    }
+                }
+            }); 
+            return {trains:directTrains,trainNumbers:directTrainNumbers};    
+    } 
+
     function toDate(dateStr,daysToAdd) {
         var parts = dateStr.split("-");
         return new Date(parts[2], parts[1] - 1, parts[0]-(daysToAdd-1));
@@ -124,16 +143,12 @@ module.exports = function(app,db){
         return ((hours > 0 && hours <= 9 )? "0" : "") + hours + ":" + ( (minutes>0 && minutes <= 9) ? "0" : "") + minutes;
     }
     
-    function getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains){
+    function getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,stations,trains){
           
-            var directTrains=[];
             var stationCode =[];
             var staionsInfo=[];
             var connectingStations=[];
-            var directTrainNumbers=[];
-
-               directTrains = getDirectTrains(trains,startStnCode,endStnCode,dateOfTravel);
-               _.forEach(directTrains.trains,function(train){
+               _.forEach(getDirectTrainsOnAnyDate(trains,startStnCode,endStnCode).trains,function(train){
                     var flag1=false;
                     var flag2=false;
                    for(var i=0;i<train.route.length;i++){
@@ -160,9 +175,7 @@ module.exports = function(app,db){
                });
 
                return { 
-                        directTrains:directTrains.trains,
-                        connectingStations:_.slice(connectingStations,1,connectingStations.length),
-                        directTrainNumbers:directTrains.trainNumbers
+                        connectingStations:_.slice(connectingStations,1,connectingStations.length)
                       }
     }
 
@@ -172,10 +185,11 @@ module.exports = function(app,db){
                 var directTrainNumbers=[];
                 var directTrains=[];
 
-                var response = getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains);
+                var response = getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,stations,trains);
+                var res = getDirectTrains(trains,startStnCode,endStnCode,dateOfTravel)
                 connectingStations = response.connectingStations;
-                directTrainNumbers = response.directTrainNumbers;
-                directTrains = response.directTrains;
+                directTrainNumbers = res.trainNumbers;
+                directTrains = res.trains;
                 _.forEach(connectingStations,function(station){
                     var trainsFromSrcToIntermediateTemp =[];
                   
@@ -222,16 +236,9 @@ module.exports = function(app,db){
                                 date2 = parts[0]+"-"+parts[1]+"-"+parts[2]; 
                             }
 
-                            trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,date).trains.filter(function(o) { 
-                                return  directTrainNumbers.indexOf(o.id) === -1;
-                            });
-
-                            if(date2!=""){
-                                trainsFromIntermediateToEndtemp2 = getDirectTrains(trains,station.code,endStnCode,date2).trains.filter(function(o) { 
-                                    return  directTrainNumbers.indexOf(o.id) === -1;
-                                });
-                            }
-
+                            trainsFromIntermediateToEndtemp = getDirectTrains(trains,station.code,endStnCode,date).trains;
+                            trainsFromIntermediateToEndtemp2 = (date2!="") ? getDirectTrains(trains,station.code,endStnCode,date2).trains : [];
+                            
 
                             var trainsFromIntermediateToEnd =[];
 
@@ -340,7 +347,7 @@ module.exports = function(app,db){
         
              
        
-         var response  = getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,dateOfTravel,stations,trains);
+         var response  = getTrainsAndJunctionsBtwStations(startStnCode,endStnCode,stations,trains);
             console.log('all promises done'); 
              
              res.json({directTrains:response.directTrains,
